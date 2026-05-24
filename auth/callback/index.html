@@ -19,7 +19,7 @@
       padding: 24px;
     }
     .card {
-      max-width: 380px;
+      max-width: 420px;
       width: 100%;
       background: #1c1410;
       border: 1px solid #2a1e14;
@@ -55,7 +55,12 @@
       text-decoration: none;
       border-radius: 999px;
       box-shadow: 0 10px 28px rgba(255,107,53,0.32);
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      max-width: 320px;
     }
+    .btn:disabled { opacity: 0.6; cursor: default; }
     .btn-secondary {
       display: inline-block;
       margin-top: 12px;
@@ -77,15 +82,32 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .err { color: #ff4d6d; }
+    form { text-align: left; margin-top: 16px; }
+    label { display: block; color: #a89887; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+    input[type="password"] {
+      width: 100%;
+      padding: 14px 16px;
+      background: #0f0a06;
+      border: 1px solid #2a1e14;
+      border-radius: 14px;
+      color: #fff5eb;
+      font-size: 16px;
+      font-family: inherit;
+      margin-bottom: 16px;
+      outline: none;
+    }
+    input[type="password"]:focus { border-color: #ff6b35; }
+    .hint { color: #6b5e4f; font-size: 12px; margin: -8px 0 16px; }
+    .error-msg { color: #ff4d6d; font-size: 14px; margin: 8px 0 0; text-align: center; }
   </style>
 </head>
 <body>
   <div class="card" id="card">
     <img src="https://auth.favil.app/storage/v1/object/public/brand/flame-240.png" alt="Favil" class="logo" />
-    <div class="kicker">FAVIL</div>
+    <div class="kicker" id="kicker">FAVIL</div>
     <div id="state">
       <div class="spinner"></div>
-      <h1>Verifying your email…</h1>
+      <h1>Verifying…</h1>
       <p>One moment.</p>
     </div>
   </div>
@@ -97,25 +119,83 @@
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cG5iaHRmaml3ZG92b21weHdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4OTk5NDQsImV4cCI6MjA5MTQ3NTk0NH0.CmP8LD1mHLrQk3SOhYwdIBmhgE1OeHe5n9Cjl0bHYtA';
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const state = document.getElementById('state');
+    const kicker = document.getElementById('kicker');
+    const render = (html) => { state.innerHTML = html; };
 
-    function render(html) { state.innerHTML = html; }
+    function validatePassword(pw) {
+      if (pw.length < 8) return 'Password must be at least 8 characters';
+      if (!/[A-Z]/.test(pw)) return 'Password must include an uppercase letter';
+      if (!/[a-z]/.test(pw)) return 'Password must include a lowercase letter';
+      if (!/[0-9]/.test(pw)) return 'Password must include a number';
+      return null;
+    }
 
-    function renderSuccess() {
-      // Attempt to open the native app via custom scheme
+    function renderRecovery() {
+      kicker.textContent = 'PASSWORD RESET';
+      render(`
+        <h1>Set a new password</h1>
+        <p>Pick something you&rsquo;ll remember.</p>
+        <form id="pw-form">
+          <label for="pw">New password</label>
+          <input id="pw" type="password" autocomplete="new-password" placeholder="••••••••" required />
+          <label for="pw2">Confirm password</label>
+          <input id="pw2" type="password" autocomplete="new-password" placeholder="••••••••" required />
+          <p class="hint">Min 8 chars, uppercase, lowercase, and a number.</p>
+          <button type="submit" class="btn" id="pw-submit">Update password</button>
+          <p id="pw-err" class="error-msg" style="display:none"></p>
+        </form>
+      `);
+
+      const form = document.getElementById('pw-form');
+      const submit = document.getElementById('pw-submit');
+      const errEl = document.getElementById('pw-err');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errEl.style.display = 'none';
+        const pw = document.getElementById('pw').value;
+        const pw2 = document.getElementById('pw2').value;
+        if (pw !== pw2) {
+          errEl.textContent = "Passwords don't match";
+          errEl.style.display = 'block';
+          return;
+        }
+        const vErr = validatePassword(pw);
+        if (vErr) {
+          errEl.textContent = vErr;
+          errEl.style.display = 'block';
+          return;
+        }
+        submit.disabled = true;
+        submit.textContent = 'Saving…';
+        const { error } = await supabase.auth.updateUser({ password: pw });
+        if (error) {
+          errEl.textContent = error.message;
+          errEl.style.display = 'block';
+          submit.disabled = false;
+          submit.textContent = 'Update password';
+          return;
+        }
+        renderSuccess('Password updated', 'You can now sign in with your new password on the Favil app.');
+      });
+    }
+
+    function renderSuccess(heading, body) {
+      kicker.textContent = 'CONFIRMED';
       const deepLink = 'com.favil.app://auth/callback/';
       render(`
-        <h1>You're in. ✦</h1>
-        <p>Your email is confirmed. Open the Favil app to continue your journey.</p>
+        <h1>${heading || "You're in. ✦"}</h1>
+        <p>${body || 'Open the Favil app to continue your journey.'}</p>
         <a href="${deepLink}" class="btn">Open Favil</a><br/>
         <a href="https://favil.app" class="btn-secondary">Back to favil.app</a>
       `);
-      // Auto-try the deep link once (browsers will fall back silently if app not installed)
+      // Auto-attempt deep link once (silent fallback if app isn't installed)
       setTimeout(() => { window.location.href = deepLink; }, 600);
     }
 
     function renderError(msg) {
+      kicker.textContent = 'ERROR';
       render(`
         <h1 class="err">Couldn't verify</h1>
         <p>${msg}</p>
@@ -127,34 +207,34 @@
       try {
         const hash = window.location.hash;
         const params = new URLSearchParams(window.location.search);
+        const hashParams = hash ? new URLSearchParams(hash.slice(1)) : null;
         const code = params.get('code');
-        const errorDesc = params.get('error_description') || (hash && new URLSearchParams(hash.slice(1)).get('error_description'));
+        const errorDesc = params.get('error_description') || hashParams?.get('error_description');
+        // Supabase appends &type=... to the redirect after verifying the token.
+        // For password-recovery emails this is "recovery"; for signup it's
+        // "signup". We use it to decide which UI to render.
+        const type = params.get('type') || hashParams?.get('type');
 
-        if (errorDesc) {
-          renderError(errorDesc);
-          return;
-        }
+        if (errorDesc) { renderError(errorDesc); return; }
 
+        // Exchange code or set tokens to create the session
         if (code) {
           const { error } = await supabase.auth.exchangeCodeForSession(code);
           if (error) { renderError(error.message); return; }
-          renderSuccess();
-          return;
-        }
-
-        if (hash && hash.includes('access_token')) {
-          const hp = new URLSearchParams(hash.slice(1));
-          const at = hp.get('access_token');
-          const rt = hp.get('refresh_token');
+        } else if (hash && hash.includes('access_token')) {
+          const at = hashParams.get('access_token');
+          const rt = hashParams.get('refresh_token');
           if (at && rt) {
             const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
             if (error) { renderError(error.message); return; }
-            renderSuccess();
-            return;
           }
         }
 
-        // No code, no token — already-verified link or stale visit
+        // Recovery flow → show password-set form
+        if (type === 'recovery') { renderRecovery(); return; }
+
+        // Already signed in (no code, no token, but a session exists) →
+        // probably an already-verified link being revisited.
         const { data: { session } } = await supabase.auth.getSession();
         if (session) { renderSuccess(); return; }
 
@@ -163,6 +243,14 @@
         renderError(e.message || String(e));
       }
     }
+
+    // PASSWORD_RECOVERY event is fired by Supabase when the session was created
+    // via a recovery link, even if the URL doesn't have ?type=recovery. This
+    // catches the case where the hash-based implicit flow set the session
+    // before we could inspect the URL.
+    supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') renderRecovery();
+    });
 
     run();
   </script>
