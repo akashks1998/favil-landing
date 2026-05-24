@@ -1,0 +1,13 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.favil.app",
+      "sha256_cert_fingerprints": [
+        "DE:44:99:33:AC:B3:F7:90:13:11:56:DA:9F:87:71:AE:EB:F3:59:95:67:E1:F1:57:E8:68:03:0F:6F:36:12:0A",
+        "DD:0D:99:84:58:2A:9D:9C:9A:21:EA:B7:CF:07:F5:37:B1:75:B1:92:0A:09:4C:35:32:D7:88:0A:A0:B9:C3:DE"
+      ]
+    }
+  }
+]

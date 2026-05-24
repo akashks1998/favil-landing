@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "BA9ZK785SG.com.favil.app",
+        "paths": [
+          "/auth/callback",
+          "/auth/callback/",
+          "/auth/callback/*"
+        ]
+      }
+    ]
+  }
+}

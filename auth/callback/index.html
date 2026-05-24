@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Favil — Verifying…</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100dvh;
+      background: #0a0604;
+      color: #fff5eb;
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      max-width: 380px;
+      width: 100%;
+      background: #1c1410;
+      border: 1px solid #2a1e14;
+      border-radius: 28px;
+      padding: 48px 32px;
+      text-align: center;
+    }
+    .logo {
+      width: 72px;
+      height: 72px;
+      border-radius: 18px;
+      margin: 0 auto 24px;
+      display: block;
+    }
+    .kicker {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: #ffb347;
+      margin-bottom: 10px;
+    }
+    h1 { font-size: 26px; line-height: 1.25; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 12px; }
+    p { color: #a89887; font-size: 15px; line-height: 1.6; margin: 0 0 24px; }
+    .btn {
+      display: inline-block;
+      padding: 16px 36px;
+      background: linear-gradient(135deg, #ff6b35 0%, #ffb347 100%);
+      color: #fff;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+      text-decoration: none;
+      border-radius: 999px;
+      box-shadow: 0 10px 28px rgba(255,107,53,0.32);
+    }
+    .btn-secondary {
+      display: inline-block;
+      margin-top: 12px;
+      padding: 12px 28px;
+      background: transparent;
+      color: #a89887;
+      font-size: 14px;
+      text-decoration: none;
+      border-radius: 999px;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #2a1e14;
+      border-top-color: #ff6b35;
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err { color: #ff4d6d; }
+  </style>
+</head>
+<body>
+  <div class="card" id="card">
+    <img src="https://auth.favil.app/storage/v1/object/public/brand/flame-240.png" alt="Favil" class="logo" />
+    <div class="kicker">FAVIL</div>
+    <div id="state">
+      <div class="spinner"></div>
+      <h1>Verifying your email…</h1>
+      <p>One moment.</p>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+    const SUPABASE_URL = 'https://auth.favil.app';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR3cG5iaHRmaml3ZG92b21weHdqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4OTk5NDQsImV4cCI6MjA5MTQ3NTk0NH0.CmP8LD1mHLrQk3SOhYwdIBmhgE1OeHe5n9Cjl0bHYtA';
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const state = document.getElementById('state');
+
+    function render(html) { state.innerHTML = html; }
+
+    function renderSuccess() {
+      // Attempt to open the native app via custom scheme
+      const deepLink = 'com.favil.app://auth/callback/';
+      render(`
+        <h1>You're in. ✦</h1>
+        <p>Your email is confirmed. Open the Favil app to continue your journey.</p>
+        <a href="${deepLink}" class="btn">Open Favil</a><br/>
+        <a href="https://favil.app" class="btn-secondary">Back to favil.app</a>
+      `);
+      // Auto-try the deep link once (browsers will fall back silently if app not installed)
+      setTimeout(() => { window.location.href = deepLink; }, 600);
+    }
+
+    function renderError(msg) {
+      render(`
+        <h1 class="err">Couldn't verify</h1>
+        <p>${msg}</p>
+        <a href="https://favil.app" class="btn-secondary">Back to favil.app</a>
+      `);
+    }
+
+    async function run() {
+      try {
+        const hash = window.location.hash;
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const errorDesc = params.get('error_description') || (hash && new URLSearchParams(hash.slice(1)).get('error_description'));
+
+        if (errorDesc) {
+          renderError(errorDesc);
+          return;
+        }
+
+        if (code) {
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) { renderError(error.message); return; }
+          renderSuccess();
+          return;
+        }
+
+        if (hash && hash.includes('access_token')) {
+          const hp = new URLSearchParams(hash.slice(1));
+          const at = hp.get('access_token');
+          const rt = hp.get('refresh_token');
+          if (at && rt) {
+            const { error } = await supabase.auth.setSession({ access_token: at, refresh_token: rt });
+            if (error) { renderError(error.message); return; }
+            renderSuccess();
+            return;
+          }
+        }
+
+        // No code, no token — already-verified link or stale visit
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) { renderSuccess(); return; }
+
+        renderError('No verification code in the link. Try requesting a new email from the app.');
+      } catch (e) {
+        renderError(e.message || String(e));
+      }
+    }
+
+    run();
+  </script>
+</body>
+</html>
