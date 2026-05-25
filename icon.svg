@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="1024" height="1024">
+  <defs>
+    <linearGradient id="flame1" x1="0" y1="1" x2="0.5" y2="0">
+      <stop offset="0%" stop-color="#ff6b35" />
+      <stop offset="60%" stop-color="#ffb347" />
+      <stop offset="100%" stop-color="#ffe0a0" />
+    </linearGradient>
+    <linearGradient id="flame2" x1="1" y1="1" x2="0.5" y2="0">
+      <stop offset="0%" stop-color="#e85d2c" />
+      <stop offset="60%" stop-color="#ff6b35" />
+      <stop offset="100%" stop-color="#ffb347" />
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="4" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" />
+    </filter>
+  </defs>
+
+  <!-- Dark background -->
+  <rect width="200" height="200" rx="40" fill="#0f0a06" />
+
+  <!-- Soft background glow -->
+  <g filter="url(#softGlow)" opacity="0.35">
+    <ellipse cx="100" cy="115" rx="40" ry="50" fill="#ff6b35" />
+  </g>
+
+  <g filter="url(#glow)">
+    <!-- Left flame -->
+    <path
+      d="M75 155 C75 155, 50 120, 55 90 C58 70, 70 55, 78 40 C82 50, 90 65, 88 80 C86 95, 95 110, 95 130 C95 148, 85 158, 75 155Z"
+      fill="url(#flame1)"
+      opacity="0.9"
+    />
+    <!-- Right flame -->
+    <path
+      d="M125 155 C125 155, 150 120, 145 90 C142 70, 130 55, 122 40 C118 50, 110 65, 112 80 C114 95, 105 110, 105 130 C105 148, 115 158, 125 155Z"
+      fill="url(#flame2)"
+      opacity="0.9"
+    />
+    <!-- Center overlap glow -->
+    <ellipse cx="100" cy="125" rx="18" ry="28" fill="#ffb347" opacity="0.25" />
+  </g>
+</svg>
