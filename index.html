@@ -195,8 +195,10 @@ section { position: relative; z-index: 1; }
 }
 .ht-line { display: block; }
 .w { display: inline-block; }
-.wl { transform: translateX(calc(var(--p) * -7vw)); }
-.wr { transform: translateX(calc(var(--p) * 7vw)); }
+/* Words START apart and CONVERGE as you scroll (--p 0→1), so the motion
+   literally "grows closer" instead of flying apart (which read as ironic). */
+.wl { transform: translateX(calc((1 - var(--p)) * -7vw)); }
+.wr { transform: translateX(calc((1 - var(--p)) * 7vw)); }
 .wc {
   transform: scale(calc(1 + var(--p) * 0.07));
   background: linear-gradient(115deg, var(--accent), var(--accent2) 70%, var(--gold-light));
